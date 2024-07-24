@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <!-- this import map allows injecting files from extension source and
+    running this file directly in a web browser with no modifications -->
+    <script type="importmap">
+        {
+            "imports": {
+                "<resource>src/openscad/openscad.js</resource>": "./openscad.js",
+                "<resource>src/openscad/three.js</resource>": "./three.js",
+                "<resource>src/openscad/stlloader.js</resource>": "./stlloader.js",
+                "<resource>src/openscad/OrbitControls.js</resource>": "./OrbitControls.js"
+            }
+        }
+    </script>
+    <script type="module">
+        import OpenScad from "<resource>src/openscad/openscad.js</resource>";
+        import * as three from "<resource>src/openscad/three.js</resource>";
+        import { STLLoader } from "<resource>src/openscad/stlloader.js</resource>";
+        import { OrbitControls } from "<resource>src/openscad/OrbitControls.js</resource>";
+
+        let scene = new three.Scene();
+        // scene.background = new three.Color("transparent");
+        let camera = new three.OrthographicCamera(window.innerWidth / -2, window.innerWidth / 2, window.innerHeight / 2, window.innerHeight / -2, 0, 100000);
+        window.camera = camera;
+        let renderer = new three.WebGLRenderer({ canvas: document.getElementById("preview"), alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x000000, 0);
+        let controls = new OrbitControls(camera, renderer.domElement);
+        let posaxes = new three.AxesHelper(1000);
+        let negaxes = new three.AxesHelper(-1000);
+        scene.add(posaxes);
+        scene.add(negaxes);
+        let loader = new STLLoader();
+
+        let lastobj;
+        function injectCode(code) {
+            OpenScad({ noInitialRun: true }).then(instance => {
+                let t = new Date().getTime();
+                let infile = "/input.scad";
+                let outfile = "/output.stl";
+                instance.FS.writeFile(infile, code);
+                instance.callMain([infile, "-o", outfile]);
+                const data = Array.from(instance.FS.readFile(outfile)).map(e => String.fromCharCode(e)).join("");
+                // console.log("data", data);
+                loader.load("data:text/plain;base64," + btoa(data), function (geometry) {
+                    const material = new three.MeshMatcapMaterial({
+                        color: 0xf9e94d,
+                        matcap: new three.TextureLoader().load("<resource>src/openscad/matcap-porcelain-white.jpg</resource>".replaceAll(/<\/?[a-z]+>(src\/openscad\/)?/g, "")), // this can't be fixed with an importmap
+                    });
+                    const mesh = new three.Mesh(geometry, material);
+                    scene.remove(lastobj);
+                    lastobj = mesh;
+                    console.log(mesh);
+                    mesh.rotation.x = Math.PI / -2;
+                    scene.add(mesh);
+                    instance.FS.unlink(infile);
+                    instance.FS.unlink(outfile);
+                });
+            });
+        }
+        window.injectCode = injectCode;
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        };
+        animate();
+        camera.position.set(10, 10, 10);
+        camera.position.setZ(3000);
+        camera.zoom = 5;
+        camera.updateProjectionMatrix();
+        window.addEventListener('resize', function onWindowResize() {
+            let [width, height] = [window.innerWidth, window.innerHeight];
+            let { position: { x, y, z }, zoom } = camera;
+            renderer.setSize(width, height);
+            camera = new three.OrthographicCamera(width / -2, width / 2, height / 2, height / -2, 0, 100000);
+            controls = new OrbitControls(camera, renderer.domElement);
+            camera.position.set(x, y, z);
+            camera.zoom = zoom;
+            window.camera = camera;
+            renderer.render(scene, camera);
+            camera.updateProjectionMatrix();
+        }, false);
+        let queue = [];
+        window.addEventListener('message', event => {
+            const message = event.data;
+            if (message.command === 'injectCode') {
+                queue.push(atob(message.code));
+            }
+        });
+        window.setInterval(() => {
+            if (queue.length > 0) {
+                console.log(queue);
+                injectCode(queue.shift());
+            }
+        }, 100);
+    </script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0
+        }
+
+        canvas {
+            display: block
+        }
+    </style>
+
+<body><canvas id="preview"></canvas></body>
+
+</html>

@@ -1,0 +1,56 @@
+{
+    "name": "vscode-openscad-preview",
+    "displayName": "vscode openscad preview",
+    "description": "preview openscad files",
+    "publisher": "moojor224",
+    "version": "0.0.0",
+    "repository": {
+        "url": "https://github.com/moojor224/vscode-openscad-preview"
+    },
+    "engines": {
+        "vscode": "^1.82.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "activationEvents": [],
+    "main": "./out/extension.js",
+    "contributes": {
+        "commands": [
+            {
+                "command": "vscode-openscad-preview.preview",
+                "title": "preview current openscad file"
+            }
+        ]
+    },
+    "scripts": {
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./",
+        "pretest": "npm run compile && npm run lint",
+        "lint": "eslint src --ext ts",
+        "test": "node ./out/test/runTest.js",
+        "vscode:prepublish": "npm run esbuild-base -- --minify",
+        "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
+        "esbuild": "npm run esbuild-base -- --minify",
+        "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
+        "test-compile": "tsc -p ./"
+    },
+    "devDependencies": {
+        "@types/mocha": "^10.0.2",
+        "@types/node": "18.x",
+        "@typescript-eslint/eslint-plugin": "^6.7.3",
+        "@typescript-eslint/parser": "^6.7.3",
+        "@vscode/test-electron": "^2.3.4",
+        "@vscode/vsce": "^2.31.1",
+        "esbuild": "^0.19.4",
+        "eslint": "^8.50.0",
+        "glob": "^10.3.3",
+        "mocha": "^10.2.0",
+        "typescript": "^5.2.2",
+        "vscode": "^1.1.37"
+    },
+    "dependencies": {
+        "install": "^0.13.0",
+        "npm": "^10.8.2"
+    }
+}

@@ -1,0 +1,92 @@
+# auto-compiles package and uploads as new release
+# search and replace the following terms:
+    # REPO_NAME
+    # USERNAME
+    # EMAIL@EXAMPLE.COM
+name: Package Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Clone Repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: get-npm-version
+        id: package-version
+        uses: martinbeentjes/npm-get-version-action@v1.3.1
+          
+      - name: Setup Node version
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          
+      - name: Create Changelog
+        run: |
+          git log $(git describe --tags --abbrev=0)..HEAD --oneline &> ${{ github.workspace }}-CHANGELOG.txt
+          cat ${{ github.workspace }}-CHANGELOG.txt
+          
+      - name: Setup Git
+        run: |
+          git config --global user.name "moojor224"
+          git config --global user.email "moojor224@gmail.com"
+          
+      - name: Get Current Version Number
+        run: |
+          CURRENT_VERSION=$(cat package.json | jq .version | cut -d'"' -f 2)
+          echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
+          
+      - name: Compile New Version (Stable)
+        run: |
+          RELEASE_VERSION=$(npx semver $CURRENT_VERSION -i patch)
+          echo "RELEASE_VERSION=$RELEASE_VERSION" >> $GITHUB_ENV
+          echo "Bump to $RELEASE_VERSION"
+
+      - name: Generate Cache Hash
+        id: generate-hash
+        run: echo "CACHE_HASH=${{ hashFiles('package-lock.json') }}" >> "$GITHUB_OUTPUT"
+    
+      - name: Version Package
+        run: |
+          git tag -a ${{ steps.package-version.outputs.current-version}} -m "${{ steps.package-version.outputs.current-version}}"
+
+      - name: Restore Cache
+        uses: actions/cache/restore@v3
+        id: restore-cache
+        with:
+            path: /home/runner/work/vscode-openscad-preview/vscode-openscad-preview/node_modules
+            key: ${{ runner.os }}-${{ steps.generate-hash.outputs.CACHE_HASH }}
+          
+      - name: Install vsce
+        run: npm list @vscode/vsce || sudo npm i --save-dev @vscode/vsce
+
+      - name: Cache node_modules
+        uses: actions/cache/save@v3
+        id: save-cache
+        with:
+          path: /home/runner/work/vscode-openscad-preview/vscode-openscad-preview/node_modules
+          key: ${{ runner.os }}-${{ steps.generate-hash.outputs.CACHE_HASH }}
+
+      - name: Package Extension
+        run: |
+          echo ${{ runner.os }}-${{ steps.generate-hash.outputs.CACHE_HASH }}
+          npx @vscode/vsce package -o "./vscode-openscad-preview-${{ steps.package-version.outputs.current-version}}.vsix"
+        
+      - name: Push Tags
+        run: |
+          export GIT_TAG=${{ steps.package-version.outputs.current-version}}
+          echo "GIT_TAG=$GIT_TAG" >> $GITHUB_ENV
+          
+      - name: GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "./vscode-openscad-preview-*"
+          bodyFile: ${{ github.workspace }}-CHANGELOG.txt
+          tag: ${{ steps.package-version.outputs.current-version}}
+          prerelease: false

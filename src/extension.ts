@@ -8,7 +8,6 @@ function btoa(str: string) {
 
 function generateHTML(webview: vscode.WebviewPanel, context: vscode.ExtensionContext) {
     let p = context.asAbsolutePath("./src/openscad/index.html");
-    vscode.window.showInformationMessage("index path: " + p);
     let html = fs.readFileSync(p).toString();
     return html.replaceAll(/<resource>(.*?)<\/resource>(?!":)/g, function (match, ...groups) {
         groups.pop();

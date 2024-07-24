@@ -3,7 +3,7 @@
     "displayName": "vscode openscad preview",
     "description": "preview openscad files",
     "publisher": "moojor224",
-    "version": "0.0.0",
+    "version": "0.0.1",
     "repository": {
         "url": "https://github.com/moojor224/vscode-openscad-preview"
     },

@@ -13,15 +13,98 @@
                 "<resource>src/openscad/openscad.js</resource>": "./openscad.js",
                 "<resource>src/openscad/three.js</resource>": "./three.js",
                 "<resource>src/openscad/stlloader.js</resource>": "./stlloader.js",
-                "<resource>src/openscad/OrbitControls.js</resource>": "./OrbitControls.js"
+                "<resource>src/openscad/OrbitControls.js</resource>": "./OrbitControls.js",
+                "<resource>src/openscad/stats.module.js</resource>": "./stats.module.js"
             }
         }
     </script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0
+        }
+
+        canvas {
+            display: block
+        }
+
+        label.dropdown-box {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            padding: 3px;
+            display: block;
+            background: #0003;
+            border: 1px solid black;
+            border-radius: 5px;
+            background-color: white;
+        }
+
+        label.dropdown-box>input {
+            cursor: pointer;
+            appearance: none;
+            display: block;
+            box-sizing: border-box;
+            height: 20px;
+            width: 20px;
+            background-image: url("./32213.png"), url("<resource>src/openscad/32213.png</resource>");
+            background-size: cover;
+        }
+
+        label.dropdown-box>input:checked {
+            transform: rotateZ(90deg) translateY(0px);
+        }
+
+        input#dropdown:not(:checked)+div.dropdown-menu {
+            display: none;
+        }
+
+        div.dropdown-menu {
+            display: block;
+            position: absolute;
+            top: 100%;
+            left: 0px;
+            transform: translatey(5px);
+            border: 1px solid black;
+            border-radius: 5px;
+            padding: 5px;
+        }
+
+        div.dropdown-menu button {
+            width: 100%;
+            background-color: white;
+            border-radius: 0;
+            cursor: pointer;
+        }
+    </style>
+
+<body>
+    <canvas id="preview"></canvas>
+    <label class="dropdown-box">
+        <input type="checkbox" name="dropdown" id="dropdown">
+        <div class="dropdown-menu">
+            <button id="render" disabled>Load Preview</button>
+            <div class="details"></div>
+        </div>
+    </label>
     <script type="module">
         import OpenScad from "<resource>src/openscad/openscad.js</resource>";
         import * as three from "<resource>src/openscad/three.js</resource>";
         import { STLLoader } from "<resource>src/openscad/stlloader.js</resource>";
         import { OrbitControls } from "<resource>src/openscad/OrbitControls.js</resource>";
+        import Stats from "<resource>src/openscad/stats.module.js</resource>";
+        const stats = new Stats();
+        document.querySelector("div.dropdown-menu").appendChild(stats.dom);
+        stats.dom.style.position = "";
+        let cv = stats.dom.querySelectorAll("canvas");
+        cv.forEach(e => {
+            e.style.width = "160px";
+            e.style.height = "96px";
+        });
+
+        let renderButton = document.getElementById("render");
+        renderButton.onclick = () => injectCode(queue);
+        let details = document.querySelector("div.details");
 
         let scene = new three.Scene();
         // scene.background = new three.Color("transparent");
@@ -39,6 +122,7 @@
 
         let lastobj;
         function injectCode(code) {
+            renderButton.setAttribute("disabled", true);
             OpenScad({ noInitialRun: true }).then(instance => {
                 let t = new Date().getTime();
                 let infile = "/input.scad";
@@ -68,6 +152,7 @@
             requestAnimationFrame(animate);
             controls.update();
             renderer.render(scene, camera);
+            stats.update();
         };
         animate();
         camera.position.set(10, 10, 10);
@@ -86,31 +171,15 @@
             renderer.render(scene, camera);
             camera.updateProjectionMatrix();
         }, false);
-        let queue = [];
+        let queue = "";
         window.addEventListener('message', event => {
             const message = event.data;
             if (message.command === 'injectCode') {
-                queue.push(atob(message.code));
+                queue = atob(message.code);
+                renderButton.removeAttribute("disabled");
             }
         });
-        window.setInterval(() => {
-            if (queue.length > 0) {
-                console.log(queue);
-                injectCode(queue.shift());
-            }
-        }, 100);
     </script>
-    <style>
-        body {
-            margin: 0;
-            padding: 0
-        }
-
-        canvas {
-            display: block
-        }
-    </style>
-
-<body><canvas id="preview"></canvas></body>
+</body>
 
 </html>

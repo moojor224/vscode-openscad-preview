@@ -84,6 +84,7 @@
         <input type="checkbox" name="dropdown" id="dropdown">
         <div class="dropdown-menu">
             <button id="render" disabled>Load Preview</button>
+            <button id="export">Export as STL</button>
             <div class="details"></div>
         </div>
     </label>
@@ -120,6 +121,24 @@
         scene.add(negaxes);
         let loader = new STLLoader();
 
+        let fileContents = null;
+        function setFileContents(contents) {
+            fileContents = contents;
+        }
+        document.getElementById("export").addEventListener("click", function () {
+            if (fileContents) {
+                let blob = new Blob([fileContents], { type: "application/octet-stream" });
+                let url = URL.createObjectURL(blob);
+                let a = document.createElement("a");
+                a.href = url;
+                a.download = "output.stl";
+                a.click();
+                URL.revokeObjectURL(url);
+            } else {
+                alert("No file contents to export.");
+            }
+        });
+
         let lastobj;
         function injectCode(code) {
             renderButton.setAttribute("disabled", true);
@@ -131,6 +150,7 @@
                 instance.callMain([infile, "-o", outfile]);
                 const data = Array.from(instance.FS.readFile(outfile)).map(e => String.fromCharCode(e)).join("");
                 // console.log("data", data);
+                setFileContents(data);
                 loader.load("data:text/plain;base64," + btoa(data), function (geometry) {
                     const material = new three.MeshMatcapMaterial({
                         color: 0xf9e94d,
